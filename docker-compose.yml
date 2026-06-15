@@ -1,0 +1,13 @@
+services:
+  pinnwand:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8080:8000"
+    volumes:
+      - pinnwand-data:/data
+    restart: unless-stopped
+
+volumes:
+  pinnwand-data:
