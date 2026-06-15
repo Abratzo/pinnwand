@@ -110,6 +110,16 @@ header h1{font-size:20px;font-weight:700;white-space:nowrap}
 .tag-sel-item{font-size:12px;padding:3px 10px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;user-select:none}
 .tag-sel-item.chosen{border-color:rgba(0,0,0,.4);font-weight:700}
 
+/* formatting toolbar */
+.fmt-toolbar{display:flex;gap:4px;margin-top:8px;margin-bottom:4px;background:#f5f5f5;border:1.5px solid #ddd;border-bottom:none;border-radius:7px 7px 0 0;padding:5px 8px}
+.fmt-btn{background:#fff;border:1px solid #ddd;border-radius:4px;padding:3px 8px;font-size:13px;cursor:pointer;color:#333;transition:all .1s;min-width:28px;text-align:center;line-height:1.4}
+.fmt-btn:hover{background:#e8e8e8;border-color:#bbb}
+.fmt-btn.active{background:#3d2b1f;color:#fff;border-color:#3d2b1f}
+.fmt-btn b{font-weight:900}
+.note-editor{width:100%;min-height:100px;border:1.5px solid #ddd;border-top:none;border-radius:0 0 7px 7px;padding:8px 10px;font-size:14px;font-family:inherit;outline:none;line-height:1.6;color:#1a1a1a;transition:border-color .15s;overflow-y:auto;max-height:220px;cursor:text}
+.note-editor:focus{border-color:#888}
+.note-editor:empty::before{content:attr(data-placeholder);color:rgba(0,0,0,.3);pointer-events:none}
+
 /* board multi-select in note modal */
 .board-sel-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .board-sel-item{font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer;border:1.5px solid #ddd;background:#f8f8f8;color:#444;transition:all .15s;user-select:none}
@@ -178,7 +188,14 @@ header h1{font-size:20px;font-weight:700;white-space:nowrap}
   <div class="modal">
     <h2 id="modal-note-title">✏️ Neue Notiz</h2>
     <label>Text</label>
-    <textarea id="n-text" placeholder="Was möchtest du notieren?"></textarea>
+    <div class="fmt-toolbar">
+      <button class="fmt-btn" onclick="fmt('bold')" title="Fett (Strg+B)"><b>B</b></button>
+      <button class="fmt-btn" onclick="fmt('italic')" title="Kursiv (Strg+I)"><i>I</i></button>
+      <button class="fmt-btn" onclick="fmt('underline')" title="Unterstrichen (Strg+U)"><u>U</u></button>
+      <span style="width:1px;background:#ddd;margin:0 4px"></span>
+      <button class="fmt-btn" onclick="fmt('insertUnorderedList')" title="Liste">☰</button>
+    </div>
+    <div class="note-editor" id="n-text" contenteditable="true" data-placeholder="Was möchtest du notieren?"></div>
     <label>Dein Name (optional)</label>
     <input type="text" id="n-author" placeholder="z.B. Maria">
     <label>Farbe</label>
@@ -419,7 +436,7 @@ function renderNotes() {
       </div>
       ${boardBadge}
       ${note.author?`<div class="note-author">von ${esc(note.author)}</div>`:''}
-      <textarea class="note-text" placeholder="Hier tippen…" oninput="scheduleUpdate(${note.id},this.value)">${esc(note.text)}</textarea>
+      <div class="note-text" style="flex:1;font-size:14px;line-height:1.5;color:#1a1a1a;min-height:90px;word-break:break-word;overflow:hidden">${note.text||'<span style="color:rgba(0,0,0,.3)">Hier tippen…</span>'}</div>
       ${tagsHtml?`<div class="note-tags">${tagsHtml}</div>`:''}
       <div class="note-footer">
         <span class="note-date">${dt}</span>
@@ -431,19 +448,6 @@ function renderNotes() {
     board.appendChild(el);
     if (!isOverview) initDrag(el, note.id);
   });
-}
-
-const updateTimers = {};
-function scheduleUpdate(id, text) {
-  clearTimeout(updateTimers[id]);
-  updateTimers[id] = setTimeout(async () => {
-    const note = state.notes.find(n=>n.id===id);
-    if (!note) return;
-    const updated = await api('PATCH', `/api/notes/${id}`, {text, editor:note.author});
-    Object.assign(note, updated);
-    const el = document.querySelector(`.note[data-id="${id}"]`);
-    if (el) el.querySelector('.note-date').textContent = fmtDate(updated.updated_at);
-  }, 800);
 }
 
 async function changeColor(id, color) {
@@ -476,6 +480,20 @@ function confirmDelete(id) {
   openModal('modal-confirm');
 }
 
+// ── Formatting ────────────────────────────────────────
+function fmt(cmd) {
+  document.getElementById('n-text').focus();
+  document.execCommand(cmd, false, null);
+  updateFmtButtons();
+}
+function updateFmtButtons() {
+  ['bold','italic','underline'].forEach(cmd => {
+    const btn = document.querySelector(`.fmt-btn[onclick="fmt('${cmd}')"]`);
+    if (btn) btn.classList.toggle('active', document.queryCommandState(cmd));
+  });
+}
+document.addEventListener('selectionchange', updateFmtButtons);
+
 // ── Note Modal ────────────────────────────────────────
 function openNewNote() {
   state.editNoteId = null;
@@ -483,7 +501,7 @@ function openNewNote() {
   state.selTags = [];
   state.selExtraBoards = [];
   document.getElementById('modal-note-title').textContent = '✏️ Neue Notiz';
-  document.getElementById('n-text').value = '';
+  document.getElementById('n-text').innerHTML = '';
   document.getElementById('n-author').value = localStorage.getItem('lastAuthor')||'';
   selColorEl('yellow');
   renderTagSelector();
@@ -501,7 +519,7 @@ async function openEditNote(id) {
   state.selTags = note.tags.map(t=>t.id);
   state.selExtraBoards = note.extra_board_ids||[];
   document.getElementById('modal-note-title').textContent = '✏️ Notiz bearbeiten';
-  document.getElementById('n-text').value = note.text;
+  document.getElementById('n-text').innerHTML = note.text;
   document.getElementById('n-author').value = note.author||'';
   selColorEl(note.color);
   // Load tags for the note's primary board
@@ -527,27 +545,30 @@ function renderTagSelector(tags) {
 function renderBoardSelector(primaryBoardId) {
   const el = document.getElementById('n-boards');
   const primary = primaryBoardId || (state.currentBoard === OVERVIEW_ID ? null : state.currentBoard);
-  el.innerHTML = state.boards.map(b => {
+  el.innerHTML = '';
+  state.boards.forEach(b => {
     const isPrimary = b.id === primary;
     const isChosen = state.selExtraBoards.includes(b.id);
-    return `<span class="board-sel-item${isPrimary?' primary':isChosen?' chosen':''}"
-      onclick="${isPrimary?'':''}" 
-      ${isPrimary?'title="Hauptboard dieser Notiz"':''}
-      ${!isPrimary?`onclick="toggleSelBoard(${b.id},this)"`:''}
-    >${isPrimary?'✓ ':''} ${esc(b.name)}</span>`;
-  }).join('');
+    const span = document.createElement('span');
+    span.className = 'board-sel-item' + (isPrimary ? ' primary' : isChosen ? ' chosen' : '');
+    span.textContent = (isPrimary ? '✓ ' : '') + b.name;
+    if (isPrimary) {
+      span.title = 'Hauptboard dieser Notiz';
+    } else {
+      span.addEventListener('click', () => {
+        const i = state.selExtraBoards.indexOf(b.id);
+        if (i >= 0) { state.selExtraBoards.splice(i, 1); span.classList.remove('chosen'); }
+        else { state.selExtraBoards.push(b.id); span.classList.add('chosen'); }
+      });
+    }
+    el.appendChild(span);
+  });
 }
 
 function toggleSelTag(id, el) {
   const i = state.selTags.indexOf(id);
   if (i>=0){state.selTags.splice(i,1);el.classList.remove('chosen');}
   else{state.selTags.push(id);el.classList.add('chosen');}
-}
-
-function toggleSelBoard(id, el) {
-  const i = state.selExtraBoards.indexOf(id);
-  if (i>=0){state.selExtraBoards.splice(i,1);el.classList.remove('chosen');}
-  else{state.selExtraBoards.push(id);el.classList.add('chosen');}
 }
 
 function selColor(el) {
@@ -561,8 +582,10 @@ function selColorEl(color) {
 }
 
 async function saveNote() {
-  const text = document.getElementById('n-text').value.trim();
-  if (!text) { document.getElementById('n-text').focus(); return; }
+  const editor = document.getElementById('n-text');
+  const text = editor.innerHTML.trim();
+  const textPlain = editor.innerText.trim();
+  if (!textPlain) { editor.focus(); return; }
   const author = document.getElementById('n-author').value.trim()||null;
   if (author) localStorage.setItem('lastAuthor', author);
 
@@ -732,7 +755,14 @@ document.querySelectorAll('.overlay').forEach(el=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(el=>el.classList.remove('open'));
-  if(e.key==='Enter'&&e.ctrlKey&&document.getElementById('modal-note').classList.contains('open')) saveNote();
+  const noteModalOpen = document.getElementById('modal-note').classList.contains('open');
+  if(noteModalOpen && e.ctrlKey && e.key==='Enter') saveNote();
+  // Formatting shortcuts only when editor focused
+  if(noteModalOpen && document.activeElement===document.getElementById('n-text')) {
+    if(e.ctrlKey && e.key==='b'){e.preventDefault();fmt('bold');}
+    if(e.ctrlKey && e.key==='i'){e.preventDefault();fmt('italic');}
+    if(e.ctrlKey && e.key==='u'){e.preventDefault();fmt('underline');}
+  }
 });
 
 init();
