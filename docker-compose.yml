@@ -1,5 +1,6 @@
 services:
   pinnwand:
+    image: pinnwand-app
     build:
       context: .
       dockerfile: backend/Dockerfile
