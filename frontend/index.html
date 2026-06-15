@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📌 Pinnwand</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#c8a878;min-height:100vh;user-select:none}
+
+/* ── Header ── */
+header{background:#3d2b1f;color:#f5e6d0;padding:0 20px;display:flex;align-items:center;gap:14px;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+header h1{font-size:20px;font-weight:700;white-space:nowrap}
+#note-count{font-size:12px;color:#c4a882;white-space:nowrap}
+.hdr-gap{flex:1}
+.hdr-btn{background:transparent;color:#c4a882;border:1px solid #6b4f3a;border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.hdr-btn:hover{color:#f5e6d0;border-color:#a07050}
+.btn-new{background:#e8c84a!important;color:#3d2b1f!important;border:none!important;font-weight:700;padding:7px 16px}
+.btn-new:hover{background:#f0d050!important}
+
+/* ── Board switcher ── */
+#board-bar{background:#2a1d13;display:flex;align-items:center;gap:6px;padding:0 16px;height:40px;overflow-x:auto;scrollbar-width:none}
+#board-bar::-webkit-scrollbar{display:none}
+.board-tab{background:transparent;color:#a07050;border:1px solid #5a3a28;border-radius:5px;padding:4px 12px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.board-tab.active{background:#e8c84a;color:#3d2b1f;border-color:#e8c84a;font-weight:700}
+.board-tab:hover:not(.active){color:#f5e6d0;border-color:#a07050}
+.board-add-btn{background:transparent;color:#a07050;border:1px dashed #5a3a28;border-radius:5px;padding:4px 10px;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1}
+.board-add-btn:hover{color:#f5e6d0;border-color:#a07050}
+
+/* ── Filter bar ── */
+#filter-bar{background:rgba(0,0,0,0.15);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-tag{font-size:12px;padding:3px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:all .15s;user-select:none}
+.filter-tag.active{font-weight:700;border-color:rgba(0,0,0,0.3)}
+#filter-archived{background:transparent;color:#d4b896;border:1px solid #8a6040;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;margin-left:auto}
+#filter-archived.active{background:#8a6040;color:#f5e6d0}
+#manage-tags-btn{background:transparent;color:#c4a882;border:none;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:4px}
+#manage-tags-btn:hover{color:#f5e6d0}
+
+/* ── Board canvas ── */
+#board{padding:24px 20px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;min-height:300px}
+.empty-hint{width:100%;text-align:center;padding:60px 20px;color:#8a6a50;font-size:16px}
+.empty-hint .big{font-size:44px;margin-bottom:10px}
+
+/* ── Notes ── */
+.note{width:180px;min-height:165px;border-radius:3px;padding:10px;position:relative;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s;cursor:default}
+.note:hover{box-shadow:5px 8px 20px rgba(0,0,0,.3);z-index:10}
+.note::before{content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#cc0000;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.note.archived{opacity:.6;filter:grayscale(.3)}
+.note:nth-child(4n+1){transform:rotate(-1.5deg)}.note:nth-child(4n+1):hover{transform:rotate(0) translateY(-2px)}
+.note:nth-child(4n+2){transform:rotate(1deg)}.note:nth-child(4n+2):hover{transform:rotate(0) translateY(-2px)}
+.note:nth-child(4n+3){transform:rotate(-0.5deg)}.note:nth-child(4n+3):hover{transform:rotate(0) translateY(-2px)}
+.note:nth-child(4n+4){transform:rotate(1.5deg)}.note:nth-child(4n+4):hover{transform:rotate(0) translateY(-2px)}
+.note.yellow{background:#fef08a;border-top:24px solid #facc15}
+.note.pink  {background:#fecdd3;border-top:24px solid #fb7185}
+.note.blue  {background:#bfdbfe;border-top:24px solid #60a5fa}
+.note.green {background:#bbf7d0;border-top:24px solid #4ade80}
+.note.orange{background:#fed7aa;border-top:24px solid #fb923c}
+.note.purple{background:#e9d5ff;border-top:24px solid #c084fc}
+
+/* note top bar */
+.note-topbar{position:absolute;top:-22px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 4px;opacity:0;transition:opacity .15s}
+.note:hover .note-topbar{opacity:1}
+.note-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:rgba(0,0,0,.45);padding:1px 3px;line-height:1;border-radius:3px}
+.note-icon-btn:hover{color:rgba(0,0,0,.85);background:rgba(255,255,255,.3)}
+
+.note-author{font-size:10px;color:rgba(0,0,0,.45);margin-bottom:4px;font-style:italic}
+.note-text{flex:1;width:100%;background:transparent;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;line-height:1.5;color:#1a1a1a;cursor:text;min-height:90px;user-select:text}
+.note-text::placeholder{color:rgba(0,0,0,.3)}
+
+/* tags on note */
+.note-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.note-tag-badge{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600}
+
+/* color dots */
+.note-colors{display:flex;gap:4px;margin-top:6px;justify-content:center;opacity:0;transition:opacity .15s}
+.note:hover .note-colors{opacity:1}
+.cdot{width:12px;height:12px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s}
+.cdot:hover{transform:scale(1.3)}
+.cdot.active{border-color:rgba(0,0,0,.5)}
+.cdot-yellow{background:#facc15}.cdot-pink{background:#fb7185}.cdot-blue{background:#60a5fa}
+.cdot-green{background:#4ade80}.cdot-orange{background:#fb923c}.cdot-purple{background:#c084fc}
+
+.note-footer{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.note-date{font-size:10px;color:rgba(0,0,0,.35)}
+.note-hist-btn{font-size:10px;color:rgba(0,0,0,.35);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline}
+.note-hist-btn:hover{color:rgba(0,0,0,.7)}
+
+/* ── Modals ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:22px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:14px;color:#1a1a1a}
+.modal label{display:block;font-size:13px;color:#555;margin-bottom:4px;margin-top:12px}
+.modal input[type=text],.modal textarea{width:100%;border:1.5px solid #ddd;border-radius:7px;padding:8px 10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.modal input[type=text]:focus,.modal textarea:focus{border-color:#888}
+.modal textarea{height:100px;resize:none}
+
+.color-row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+.cchoice{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .1s,border-color .1s}
+.cchoice:hover{transform:scale(1.15)}
+.cchoice.sel{border-color:#333}
+.cc-yellow{background:#facc15}.cc-pink{background:#fb7185}.cc-blue{background:#60a5fa}
+.cc-green{background:#4ade80}.cc-orange{background:#fb923c}.cc-purple{background:#c084fc}
+
+/* tag selector in modal */
+.tag-selector{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tag-sel-item{font-size:12px;padding:3px 10px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;user-select:none}
+.tag-sel-item.chosen{border-color:rgba(0,0,0,.4);font-weight:700}
+
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.btn-cancel{background:#f0f0f0;color:#555;border:none;border-radius:7px;padding:9px 16px;font-size:13px;cursor:pointer}
+.btn-ok{background:#3d2b1f;color:white;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-ok:hover{background:#5a3f2e}
+.btn-danger{background:#dc2626;color:white;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-danger:hover{background:#b91c1c}
+
+/* history list */
+.hist-item{border-bottom:1px solid #eee;padding:8px 0;font-size:13px}
+.hist-item:last-child{border-bottom:none}
+.hist-meta{font-size:11px;color:#888;margin-bottom:2px}
+.hist-text{color:#222;white-space:pre-wrap;word-break:break-word}
+
+/* tag management */
+.tag-mgmt-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.tag-mgmt-item:last-child{border-bottom:none}
+.tag-swatch{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.tag-name{flex:1;font-size:14px;color:#222}
+.tag-del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;line-height:1}
+.tag-del-btn:hover{color:#dc2626}
+
+/* board manage */
+.board-mgmt-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.board-mgmt-item:last-child{border-bottom:none}
+.board-mgmt-name{flex:1;font-size:14px;color:#222}
+.board-rename-btn{background:none;border:none;color:#888;cursor:pointer;font-size:13px;text-decoration:underline}
+.board-del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:16px}
+.board-del-btn:hover{color:#dc2626}
+
+/* tag colors map */
+.tc-gray{background:#e5e7eb;color:#374151}
+.tc-red{background:#fee2e2;color:#991b1b}
+.tc-orange{background:#ffedd5;color:#9a3412}
+.tc-yellow{background:#fef9c3;color:#854d0e}
+.tc-green{background:#dcfce7;color:#166534}
+.tc-blue{background:#dbeafe;color:#1e40af}
+.tc-purple{background:#f3e8ff;color:#6b21a8}
+.tc-pink{background:#fce7f3;color:#9d174d}
+
+/* confirm */
+.confirm-box{background:#fff;border-radius:12px;padding:22px;text-align:center;max-width:300px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.confirm-box p{font-size:15px;color:#333;margin-bottom:18px}
+
+@media(max-width:600px){.note{width:150px;min-height:140px}#board{padding:16px 10px;gap:12px}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📌 Pinnwand</h1>
+  <span id="note-count">–</span>
+  <div class="hdr-gap"></div>
+  <button class="hdr-btn" onclick="openBoardMgmt()">⚙ Boards</button>
+  <button class="hdr-btn btn-new" onclick="openNewNote()">+ Neue Notiz</button>
+</header>
+
+<div id="board-bar"></div>
+<div id="filter-bar">
+  <span style="font-size:12px;color:#d4b896">Tags:</span>
+  <div id="filter-tags"></div>
+  <button id="manage-tags-btn" onclick="openTagMgmt()">+ Tags verwalten</button>
+  <button id="filter-archived" onclick="toggleArchiveView()">📦 Archiv</button>
+</div>
+
+<div id="board"><div class="empty-hint" id="empty-hint"><div class="big">📝</div>Noch keine Notizen.<br>Klicke auf <strong>+ Neue Notiz</strong>!</div></div>
+
+<!-- New/Edit Note Modal -->
+<div class="overlay" id="modal-note">
+  <div class="modal">
+    <h2 id="modal-note-title">✏️ Neue Notiz</h2>
+    <label>Text</label>
+    <textarea id="n-text" placeholder="Was möchtest du notieren?"></textarea>
+    <label>Dein Name (optional)</label>
+    <input type="text" id="n-author" placeholder="z.B. Maria">
+    <label>Farbe</label>
+    <div class="color-row" id="n-colors">
+      <div class="cchoice cc-yellow sel" data-c="yellow" onclick="selColor(this)"></div>
+      <div class="cchoice cc-pink"       data-c="pink"   onclick="selColor(this)"></div>
+      <div class="cchoice cc-blue"       data-c="blue"   onclick="selColor(this)"></div>
+      <div class="cchoice cc-green"      data-c="green"  onclick="selColor(this)"></div>
+      <div class="cchoice cc-orange"     data-c="orange" onclick="selColor(this)"></div>
+      <div class="cchoice cc-purple"     data-c="purple" onclick="selColor(this)"></div>
+    </div>
+    <label>Tags</label>
+    <div class="tag-selector" id="n-tags"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-note')">Abbrechen</button>
+      <button class="btn-ok" onclick="saveNote()">Speichern 💾</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="overlay" id="modal-hist">
+  <div class="modal">
+    <h2>📜 Änderungsverlauf</h2>
+    <div id="hist-list"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-hist')">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tag Management Modal -->
+<div class="overlay" id="modal-tags">
+  <div class="modal">
+    <h2>🏷 Tags verwalten</h2>
+    <div id="tag-mgmt-list"></div>
+    <hr style="margin:14px 0;border:none;border-top:1px solid #eee">
+    <label>Neuer Tag</label>
+    <input type="text" id="new-tag-name" placeholder="Tag-Name" style="margin-bottom:8px">
+    <label>Farbe</label>
+    <select id="new-tag-color" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:14px;outline:none">
+      <option value="gray">Grau</option><option value="red">Rot</option>
+      <option value="orange">Orange</option><option value="yellow">Gelb</option>
+      <option value="green">Grün</option><option value="blue">Blau</option>
+      <option value="purple">Lila</option><option value="pink">Pink</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-tags')">Schließen</button>
+      <button class="btn-ok" onclick="createTag()">Tag erstellen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Board Management Modal -->
+<div class="overlay" id="modal-boards">
+  <div class="modal">
+    <h2>⚙ Boards verwalten</h2>
+    <div id="board-mgmt-list"></div>
+    <hr style="margin:14px 0;border:none;border-top:1px solid #eee">
+    <label>Neues Board</label>
+    <input type="text" id="new-board-name" placeholder="Board-Name">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-boards')">Schließen</button>
+      <button class="btn-ok" onclick="createBoard()">Board erstellen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="overlay" id="modal-confirm">
+  <div class="confirm-box">
+    <p id="confirm-text">Sicher?</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn-cancel" onclick="closeModal('modal-confirm')">Nein</button>
+      <button class="btn-danger" id="confirm-yes">Ja, löschen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let state = { boards:[], tags:[], notes:[], currentBoard:null, filterTags:[], showArchived:false, editNoteId:null, selColor:'yellow', selTags:[] };
+
+const COLORS = ['yellow','pink','blue','green','orange','purple'];
+
+async function api(method, path, body) {
+  const r = await fetch(API + path, { method, headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) { const e = await r.json().catch(()=>({detail:'Fehler'})); alert(e.detail||'Fehler'); throw e; }
+  return r.json();
+}
+
+// ── Init ──────────────────────────────────────────────
+async function init() {
+  state.boards = await api('GET', '/api/boards');
+  if (!state.boards.length) return;
+  const saved = parseInt(localStorage.getItem('currentBoard'));
+  state.currentBoard = state.boards.find(b=>b.id===saved)?.id || state.boards[0].id;
+  await loadBoard();
+}
+
+async function loadBoard() {
+  [state.tags, state.notes] = await Promise.all([
+    api('GET', `/api/boards/${state.currentBoard}/tags`),
+    api('GET', `/api/boards/${state.currentBoard}/notes?archived=${state.showArchived?1:0}`)
+  ]);
+  renderBoardBar();
+  renderFilterBar();
+  renderNotes();
+}
+
+// ── Board bar ──────────────────────────────────────────
+function renderBoardBar() {
+  const bar = document.getElementById('board-bar');
+  bar.innerHTML = state.boards.map(b =>
+    `<button class="board-tab${b.id===state.currentBoard?' active':''}" onclick="switchBoard(${b.id})">${esc(b.name)}</button>`
+  ).join('') + `<button class="board-add-btn" title="Neues Board" onclick="openBoardMgmt()">＋</button>`;
+}
+
+async function switchBoard(id) {
+  state.currentBoard = id;
+  state.filterTags = [];
+  state.showArchived = false;
+  document.getElementById('filter-archived').classList.remove('active');
+  localStorage.setItem('currentBoard', id);
+  await loadBoard();
+}
+
+// ── Filter bar ────────────────────────────────────────
+function renderFilterBar() {
+  const ft = document.getElementById('filter-tags');
+  ft.innerHTML = state.tags.map(t =>
+    `<span class="filter-tag tc-${t.color}${state.filterTags.includes(t.id)?' active':''}" onclick="toggleFilterTag(${t.id})">${esc(t.name)}</span>`
+  ).join('');
+}
+
+function toggleFilterTag(id) {
+  const i = state.filterTags.indexOf(id);
+  if (i>=0) state.filterTags.splice(i,1); else state.filterTags.push(id);
+  renderFilterBar();
+  renderNotes();
+}
+
+async function toggleArchiveView() {
+  state.showArchived = !state.showArchived;
+  document.getElementById('filter-archived').classList.toggle('active', state.showArchived);
+  state.notes = await api('GET', `/api/boards/${state.currentBoard}/notes?archived=${state.showArchived?1:0}`);
+  renderNotes();
+}
+
+// ── Notes ────────────────────────────────────────────
+function filteredNotes() {
+  if (!state.filterTags.length) return state.notes;
+  return state.notes.filter(n => state.filterTags.every(tid => n.tags.some(t=>t.id===tid)));
+}
+
+function renderNotes() {
+  const board = document.getElementById('board');
+  board.querySelectorAll('.note').forEach(el=>el.remove());
+  const notes = filteredNotes();
+  const cnt = document.getElementById('note-count');
+  cnt.textContent = notes.length === 0 ? 'Keine Notizen' : notes.length === 1 ? '1 Notiz' : `${notes.length} Notizen`;
+  document.getElementById('empty-hint').style.display = notes.length ? 'none' : 'block';
+
+  notes.forEach(note => {
+    const el = document.createElement('div');
+    el.className = `note ${note.color}${note.archived?' archived':''}`;
+    el.dataset.id = note.id;
+
+    const tagsHtml = note.tags.map(t=>
+      `<span class="note-tag-badge tc-${t.color}">${esc(t.name)}</span>`
+    ).join('');
+
+    const dt = note.updated_at ? fmtDate(note.updated_at) : '';
+    const archBtn = note.archived
+      ? `<button class="note-icon-btn" title="Wiederherstellen" onclick="unarchive(${note.id})">♻</button>`
+      : `<button class="note-icon-btn" title="Archivieren" onclick="archiveNote(${note.id})">📦</button>`;
+
+    el.innerHTML = `
+      <div class="note-drag-handle">⠿⠿⠿</div>
+      <div class="note-topbar">
+        <div style="display:flex;gap:2px">
+          ${archBtn}
+          <button class="note-icon-btn" title="Bearbeiten" onclick="openEditNote(${note.id})">✏</button>
+        </div>
+        <button class="note-icon-btn" title="Löschen" onclick="confirmDelete(${note.id})">✕</button>
+      </div>
+      ${note.author ? `<div class="note-author">von ${esc(note.author)}</div>` : ''}
+      <textarea class="note-text" placeholder="Hier tippen…" oninput="scheduleUpdate(${note.id},this.value)">${esc(note.text)}</textarea>
+      ${tagsHtml ? `<div class="note-tags">${tagsHtml}</div>` : ''}
+      <div class="note-footer">
+        <span class="note-date">${dt}</span>
+        <button class="note-hist-btn" onclick="openHistory(${note.id})">Verlauf</button>
+      </div>
+      <div class="note-colors">
+        ${COLORS.map(c=>`<div class="cdot cdot-${c}${note.color===c?' active':''}" onclick="changeColor(${note.id},'${c}')"></div>`).join('')}
+      </div>`;
+    board.appendChild(el);
+    initDrag(el, note.id);
+  });
+}
+
+// ── Drag & Drop (Maus + Touch) ────────────────────────
+let drag = { el:null, id:null, startX:0, startY:0, clone:null, placeholder:null };
+
+function initDrag(el, id) {
+  // Mouse
+  el.addEventListener('mousedown', e => {
+    if (e.target.tagName==='TEXTAREA'||e.target.tagName==='BUTTON'||e.target.tagName==='SELECT') return;
+    startDrag(e.clientX, e.clientY, el, id);
+    const onMove = e2 => moveDrag(e2.clientX, e2.clientY);
+    const onUp   = ()  => { endDrag(); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  // Touch
+  el.addEventListener('touchstart', e => {
+    if (e.target.tagName==='TEXTAREA'||e.target.tagName==='BUTTON') return;
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY, el, id);
+    const onMove = e2 => { e2.preventDefault(); const t2=e2.touches[0]; moveDrag(t2.clientX,t2.clientY); };
+    const onEnd  = ()  => { endDrag(); el.removeEventListener('touchmove',onMove); el.removeEventListener('touchend',onEnd); };
+    el.addEventListener('touchmove', onMove, {passive:false});
+    el.addEventListener('touchend', onEnd);
+  }, {passive:true});
+}
+
+function startDrag(x, y, el, id) {
+  drag.el = el;
+  drag.id = id;
+  drag.startX = x;
+  drag.startY = y;
+  const rect = el.getBoundingClientRect();
+  drag.offX = x - rect.left;
+  drag.offY = y - rect.top;
+
+  // Placeholder (grey hole)
+  drag.placeholder = document.createElement('div');
+  drag.placeholder.className = 'note drag-placeholder';
+  drag.placeholder.style.cssText = `width:${rect.width}px;min-height:${rect.height}px;opacity:.3;background:#aaa;border-top:24px solid #888`;
+  el.parentNode.insertBefore(drag.placeholder, el);
+
+  // Floating clone
+  drag.clone = el.cloneNode(true);
+  drag.clone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.88;pointer-events:none;z-index:999;box-shadow:8px 12px 30px rgba(0,0,0,.4);transform:rotate(2deg) scale(1.04);transition:none`;
+  document.body.appendChild(drag.clone);
+  el.style.visibility = 'hidden';
+}
+
+function moveDrag(x, y) {
+  if (!drag.clone) return;
+  drag.clone.style.left = (x - drag.offX) + 'px';
+  drag.clone.style.top  = (y - drag.offY) + 'px';
+
+  // Find where to insert placeholder
+  const board = document.getElementById('board');
+  const notes = [...board.querySelectorAll('.note:not(.drag-placeholder)')].filter(n=>n!==drag.el);
+  let inserted = false;
+  for (const n of notes) {
+    const r = n.getBoundingClientRect();
+    if (x < r.left + r.width/2 && y < r.top + r.height/2) {
+      board.insertBefore(drag.placeholder, n);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) board.appendChild(drag.placeholder);
+}
+
+async function endDrag() {
+  if (!drag.clone) return;
+  drag.clone.remove();
+  drag.el.style.visibility = '';
+  drag.placeholder.replaceWith(drag.el);
+  drag.clone = null;
+
+  // Read new order from DOM
+  const board = document.getElementById('board');
+  const newOrder = [...board.querySelectorAll('.note[data-id]')].map(n=>parseInt(n.dataset.id));
+  // Reorder state.notes to match
+  state.notes = newOrder.map(id => state.notes.find(n=>n.id===id)).filter(Boolean);
+  // Save to backend
+  await api('POST', `/api/boards/${state.currentBoard}/notes/reorder`, { note_ids: newOrder });
+}
+
+// Add drag handle indicator to notes via CSS
+const dragStyle = document.createElement('style');
+dragStyle.textContent = `.note-drag-handle{display:none;position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(0,0,0,.35);cursor:grab;padding:2px 6px;letter-spacing:2px}.note:hover .note-drag-handle{display:block}.drag-placeholder{border-radius:3px;border:2px dashed #888!important}`;
+document.head.appendChild(dragStyle);
+
+const updateTimers = {};
+function scheduleUpdate(id, text) {
+  clearTimeout(updateTimers[id]);
+  updateTimers[id] = setTimeout(async () => {
+    const note = state.notes.find(n=>n.id===id);
+    if (!note) return;
+    const updated = await api('PATCH', `/api/notes/${id}`, { text, editor: note.author });
+    Object.assign(note, updated);
+    const el = document.querySelector(`.note[data-id="${id}"]`);
+    if (el) el.querySelector('.note-date').textContent = fmtDate(updated.updated_at);
+  }, 800);
+}
+
+async function changeColor(id, color) {
+  const updated = await api('PATCH', `/api/notes/${id}`, { color });
+  const note = state.notes.find(n=>n.id===id);
+  if (note) Object.assign(note, updated);
+  renderNotes();
+}
+
+async function archiveNote(id) {
+  await api('PATCH', `/api/notes/${id}`, { archived: 1 });
+  state.notes = state.notes.filter(n=>n.id!==id);
+  renderNotes();
+}
+
+async function unarchive(id) {
+  await api('PATCH', `/api/notes/${id}`, { archived: 0 });
+  state.notes = state.notes.filter(n=>n.id!==id);
+  renderNotes();
+}
+
+function confirmDelete(id) {
+  document.getElementById('confirm-text').textContent = 'Notiz wirklich endgültig löschen?';
+  document.getElementById('confirm-yes').onclick = async () => {
+    await api('DELETE', `/api/notes/${id}`);
+    state.notes = state.notes.filter(n=>n.id!==id);
+    renderNotes();
+    closeModal('modal-confirm');
+  };
+  openModal('modal-confirm');
+}
+
+// ── New / Edit Note Modal ─────────────────────────────
+function openNewNote() {
+  state.editNoteId = null;
+  state.selColor = 'yellow';
+  state.selTags = [];
+  document.getElementById('modal-note-title').textContent = '✏️ Neue Notiz';
+  document.getElementById('n-text').value = '';
+  document.getElementById('n-author').value = localStorage.getItem('lastAuthor') || '';
+  selColorEl('yellow');
+  renderTagSelector();
+  openModal('modal-note');
+  setTimeout(()=>document.getElementById('n-text').focus(),100);
+}
+
+function openEditNote(id) {
+  const note = state.notes.find(n=>n.id===id);
+  if (!note) return;
+  state.editNoteId = id;
+  state.selColor = note.color;
+  state.selTags = note.tags.map(t=>t.id);
+  document.getElementById('modal-note-title').textContent = '✏️ Notiz bearbeiten';
+  document.getElementById('n-text').value = note.text;
+  document.getElementById('n-author').value = note.author || '';
+  selColorEl(note.color);
+  renderTagSelector();
+  openModal('modal-note');
+}
+
+function renderTagSelector() {
+  const el = document.getElementById('n-tags');
+  if (!state.tags.length) { el.innerHTML = '<span style="font-size:12px;color:#aaa">Noch keine Tags. Zuerst Tags erstellen.</span>'; return; }
+  el.innerHTML = state.tags.map(t=>
+    `<span class="tag-sel-item tc-${t.color}${state.selTags.includes(t.id)?' chosen':''}" onclick="toggleSelTag(${t.id},this)">${esc(t.name)}</span>`
+  ).join('');
+}
+
+function toggleSelTag(id, el) {
+  const i = state.selTags.indexOf(id);
+  if (i>=0) { state.selTags.splice(i,1); el.classList.remove('chosen'); }
+  else { state.selTags.push(id); el.classList.add('chosen'); }
+}
+
+function selColor(el) {
+  document.querySelectorAll('#n-colors .cchoice').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  state.selColor = el.dataset.c;
+}
+
+function selColorEl(color) {
+  document.querySelectorAll('#n-colors .cchoice').forEach(e=>{
+    e.classList.toggle('sel', e.dataset.c===color);
+  });
+  state.selColor = color;
+}
+
+async function saveNote() {
+  const text = document.getElementById('n-text').value.trim();
+  if (!text) { document.getElementById('n-text').focus(); return; }
+  const author = document.getElementById('n-author').value.trim() || null;
+  if (author) localStorage.setItem('lastAuthor', author);
+
+  if (state.editNoteId) {
+    const updated = await api('PATCH', `/api/notes/${state.editNoteId}`, {
+      text, color: state.selColor, author, tag_ids: state.selTags, editor: author
+    });
+    const i = state.notes.findIndex(n=>n.id===state.editNoteId);
+    if (i>=0) state.notes[i] = updated;
+  } else {
+    const created = await api('POST', `/api/boards/${state.currentBoard}/notes`, {
+      text, color: state.selColor, author, tag_ids: state.selTags
+    });
+    state.notes.unshift(created);
+  }
+  renderNotes();
+  closeModal('modal-note');
+}
+
+// ── History ───────────────────────────────────────────
+async function openHistory(id) {
+  const hist = await api('GET', `/api/notes/${id}/history`);
+  const el = document.getElementById('hist-list');
+  if (!hist.length) { el.innerHTML = '<p style="color:#aaa;font-size:13px">Kein Verlauf vorhanden.</p>'; }
+  else {
+    el.innerHTML = hist.map((h,i)=>`
+      <div class="hist-item">
+        <div class="hist-meta">${i===0?'<strong>Aktuell</strong> · ':''} ${h.author?esc(h.author)+' · ':''}${fmtDate(h.changed_at)}</div>
+        <div class="hist-text">${esc(h.text)}</div>
+      </div>`).join('');
+  }
+  openModal('modal-hist');
+}
+
+// ── Tag Management ────────────────────────────────────
+function openTagMgmt() {
+  renderTagMgmtList();
+  openModal('modal-tags');
+}
+
+function renderTagMgmtList() {
+  const el = document.getElementById('tag-mgmt-list');
+  if (!state.tags.length) { el.innerHTML = '<p style="color:#aaa;font-size:13px">Noch keine Tags.</p>'; return; }
+  el.innerHTML = state.tags.map(t=>`
+    <div class="tag-mgmt-item">
+      <div class="tag-swatch tc-${t.color}" style="background:var(--s,#ddd)"></div>
+      <span class="note-tag-badge tc-${t.color}">${esc(t.name)}</span>
+      <span class="tag-name"></span>
+      <button class="tag-del-btn" onclick="deleteTag(${t.id})">✕</button>
+    </div>`).join('');
+}
+
+async function createTag() {
+  const name = document.getElementById('new-tag-name').value.trim();
+  if (!name) { document.getElementById('new-tag-name').focus(); return; }
+  const color = document.getElementById('new-tag-color').value;
+  const tag = await api('POST', `/api/boards/${state.currentBoard}/tags`, { name, color });
+  state.tags.push(tag);
+  document.getElementById('new-tag-name').value = '';
+  renderTagMgmtList();
+  renderFilterBar();
+  renderTagSelector();
+}
+
+async function deleteTag(id) {
+  await api('DELETE', `/api/boards/${state.currentBoard}/tags/${id}`);
+  state.tags = state.tags.filter(t=>t.id!==id);
+  state.notes.forEach(n=>{ n.tags = n.tags.filter(t=>t.id!==id); });
+  renderTagMgmtList();
+  renderFilterBar();
+  renderNotes();
+}
+
+// ── Board Management ──────────────────────────────────
+function openBoardMgmt() {
+  renderBoardMgmtList();
+  openModal('modal-boards');
+}
+
+function renderBoardMgmtList() {
+  const el = document.getElementById('board-mgmt-list');
+  el.innerHTML = state.boards.map(b=>`
+    <div class="board-mgmt-item">
+      <span class="board-mgmt-name">${esc(b.name)}</span>
+      <button class="board-rename-btn" onclick="renameBoard(${b.id},'${esc(b.name).replace(/'/g,"\\'")}')">umbenennen</button>
+      <button class="board-del-btn" onclick="deleteBoard(${b.id})" ${state.boards.length<=1?'disabled title="Letztes Board"':''}>✕</button>
+    </div>`).join('');
+}
+
+async function createBoard() {
+  const name = document.getElementById('new-board-name').value.trim();
+  if (!name) { document.getElementById('new-board-name').focus(); return; }
+  const board = await api('POST', '/api/boards', { name });
+  state.boards.push(board);
+  document.getElementById('new-board-name').value = '';
+  renderBoardMgmtList();
+  renderBoardBar();
+}
+
+async function renameBoard(id, oldName) {
+  const name = prompt('Neuer Name:', oldName);
+  if (!name || name===oldName) return;
+  await api('PATCH', `/api/boards/${id}`, { name });
+  state.boards.find(b=>b.id===id).name = name;
+  renderBoardMgmtList();
+  renderBoardBar();
+}
+
+async function deleteBoard(id) {
+  if (!confirm('Board und alle Notizen darin löschen?')) return;
+  await api('DELETE', `/api/boards/${id}`);
+  state.boards = state.boards.filter(b=>b.id!==id);
+  if (state.currentBoard===id) {
+    state.currentBoard = state.boards[0]?.id;
+    localStorage.setItem('currentBoard', state.currentBoard);
+  }
+  renderBoardMgmtList();
+  await loadBoard();
+}
+
+// ── Helpers ───────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// close overlays on backdrop click
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click', e=>{ if(e.target===el) el.classList.remove('open'); });
+});
+
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(el=>el.classList.remove('open'));
+  if (e.key==='Enter' && e.ctrlKey && document.getElementById('modal-note').classList.contains('open')) saveNote();
+});
+
+init();
+</script>
+</body>
+</html>
