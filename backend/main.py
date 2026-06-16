@@ -28,7 +28,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS boards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,6 +111,18 @@ class NoteUpdate(BaseModel):
     archived: Optional[int] = None
     editor: Optional[str] = None
 
+class BoardReorderIn(BaseModel):
+    board_ids: List[int]
+
+@app.post("/api/boards/reorder")
+def reorder_boards(r: BoardReorderIn):
+    con = get_db()
+    for i, bid in enumerate(r.board_ids):
+        con.execute("UPDATE boards SET sort_order=? WHERE id=?", (i, bid))
+    con.commit()
+    con.close()
+    return {"ok": True}
+
 class ReorderIn(BaseModel):
     note_ids: List[int]
 
@@ -166,14 +179,15 @@ def delete_logo():
 @app.get("/api/boards")
 def list_boards():
     con = get_db()
-    rows = con.execute("SELECT * FROM boards ORDER BY id").fetchall()
+    rows = con.execute("SELECT * FROM boards ORDER BY sort_order ASC, id ASC").fetchall()
     con.close()
     return [dict(r) for r in rows]
 
 @app.post("/api/boards")
 def create_board(b: BoardIn):
     con = get_db()
-    cur = con.execute("INSERT INTO boards (name, created_at) VALUES (?, ?)", (b.name, now()))
+    max_order = con.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM boards").fetchone()[0]
+    cur = con.execute("INSERT INTO boards (name, sort_order, created_at) VALUES (?, ?, ?)", (b.name, max_order, now()))
     con.commit()
     board_id = cur.lastrowid
     con.close()
