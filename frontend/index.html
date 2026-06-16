@@ -24,9 +24,11 @@ header h1{font-size:20px;font-weight:700;white-space:nowrap}
 .btn-new:hover{background:#f0d050!important}
 
 /* ── Board switcher ── */
-#board-bar{background:#2a1d13;display:flex;align-items:center;gap:6px;padding:0 16px;height:40px;overflow-x:auto;scrollbar-width:none}
-#board-bar::-webkit-scrollbar{display:none}
-.board-tab{background:transparent;color:#a07050;border:1px solid #5a3a28;border-radius:5px;padding:4px 12px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+#board-bar{background:#2a1d13;display:flex;align-items:center;gap:6px;padding:0 12px;height:46px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#6b4f3a #2a1d13;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+#board-bar::-webkit-scrollbar{height:3px}
+#board-bar::-webkit-scrollbar-track{background:#2a1d13}
+#board-bar::-webkit-scrollbar-thumb{background:#6b4f3a;border-radius:2px}
+.board-tab{background:transparent;color:#a07050;border:1px solid #5a3a28;border-radius:5px;padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;touch-action:manipulation}
 .board-tab.active{background:#e8c84a;color:#3d2b1f;border-color:#e8c84a;font-weight:700}
 .board-tab.overview{border-style:dashed;color:#c4a882}
 .board-tab.overview.active{background:#6b4f3a;color:#f5e6d0;border-color:#6b4f3a;border-style:solid}
@@ -141,12 +143,25 @@ header h1{font-size:20px;font-weight:700;white-space:nowrap}
 .tag-name{flex:1;font-size:14px;color:#222}
 .tag-del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;line-height:1}
 .tag-del-btn:hover{color:#dc2626}
-.board-mgmt-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.board-mgmt-item{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #f0f0f0;cursor:default}
 .board-mgmt-item:last-child{border-bottom:none}
+.board-mgmt-item.dragging{opacity:.4}
+.board-mgmt-item.drag-over{border-top:2px solid #3d2b1f}
+.board-drag-handle{color:#ccc;cursor:grab;font-size:16px;padding:0 4px;flex-shrink:0;touch-action:none}
+.board-drag-handle:hover{color:#888}
 .board-mgmt-name{flex:1;font-size:14px;color:#222}
 .board-rename-btn{background:none;border:none;color:#888;cursor:pointer;font-size:13px;text-decoration:underline}
 .board-del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:16px}
 .board-del-btn:hover{color:#dc2626}
+/* checklist in note editor */
+.note-editor ul{padding-left:20px;margin:4px 0}
+.note-editor ol{padding-left:20px;margin:4px 0}
+.note-editor li{margin:2px 0}
+.note-editor input[type=checkbox]{margin-right:6px;cursor:pointer;width:14px;height:14px;accent-color:#3d2b1f}
+.note-text ul{padding-left:18px;margin:3px 0}
+.note-text ol{padding-left:18px;margin:3px 0}
+.note-text li{margin:1px 0}
+.note-text input[type=checkbox]{margin-right:5px;width:12px;height:12px;pointer-events:none}
 .tc-gray{background:#e5e7eb;color:#374151}.tc-red{background:#fee2e2;color:#991b1b}
 .tc-orange{background:#ffedd5;color:#9a3412}.tc-yellow{background:#fef9c3;color:#854d0e}
 .tc-green{background:#dcfce7;color:#166534}.tc-blue{background:#dbeafe;color:#1e40af}
@@ -193,7 +208,9 @@ header h1{font-size:20px;font-weight:700;white-space:nowrap}
       <button class="fmt-btn" onclick="fmt('italic')" title="Kursiv (Strg+I)"><i>I</i></button>
       <button class="fmt-btn" onclick="fmt('underline')" title="Unterstrichen (Strg+U)"><u>U</u></button>
       <span style="width:1px;background:#ddd;margin:0 4px"></span>
-      <button class="fmt-btn" onclick="fmt('insertUnorderedList')" title="Liste">☰</button>
+      <button class="fmt-btn" id="btn-ul" onclick="fmt('insertUnorderedList')" title="Aufzählung">• —</button>
+      <button class="fmt-btn" id="btn-ol" onclick="fmt('insertOrderedList')" title="Nummerierung">1. —</button>
+      <button class="fmt-btn" id="btn-cl" onclick="insertChecklist()" title="Checkliste">☑</button>
     </div>
     <div class="note-editor" id="n-text" contenteditable="true" data-placeholder="Was möchtest du notieren?"></div>
     <label>Dein Name (optional)</label>
@@ -361,6 +378,11 @@ function renderBoardBar() {
       `<button class="board-tab${b.id===state.currentBoard?' active':''}" onclick="switchBoard(${b.id})">${esc(b.name)}</button>`
     ).join('') +
     `<button class="board-add-btn" title="Neues Board" onclick="openBoardMgmt()">＋</button>`;
+  // scroll active tab into view
+  setTimeout(() => {
+    const active = bar.querySelector('.board-tab.active');
+    if (active) active.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+  }, 50);
 }
 
 async function switchBoard(id) {
@@ -486,11 +508,25 @@ function fmt(cmd) {
   document.execCommand(cmd, false, null);
   updateFmtButtons();
 }
+function insertChecklist() {
+  const editor = document.getElementById('n-text');
+  editor.focus();
+  // Insert a checkbox list item at cursor
+  const id = 'cl_' + Date.now();
+  document.execCommand('insertHTML', false,
+    '<div><input type="checkbox" onclick="this.closest('div').style.textDecoration=this.checked?'line-through':'none'"> <span></span></div>'
+  );
+  updateFmtButtons();
+}
 function updateFmtButtons() {
   ['bold','italic','underline'].forEach(cmd => {
     const btn = document.querySelector(`.fmt-btn[onclick="fmt('${cmd}')"]`);
     if (btn) btn.classList.toggle('active', document.queryCommandState(cmd));
   });
+  const ulBtn = document.getElementById('btn-ul');
+  const olBtn = document.getElementById('btn-ol');
+  if (ulBtn) ulBtn.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
+  if (olBtn) olBtn.classList.toggle('active', document.queryCommandState('insertOrderedList'));
 }
 document.addEventListener('selectionchange', updateFmtButtons);
 
@@ -649,14 +685,86 @@ async function deleteTag(id) {
 
 // ── Board Management ──────────────────────────────────
 function openBoardMgmt() { renderBoardMgmtList(); openModal('modal-boards'); }
+
+let boardDrag = {dragIdx:null};
+
 function renderBoardMgmtList() {
   const el = document.getElementById('board-mgmt-list');
-  el.innerHTML = state.boards.map(b=>`
-    <div class="board-mgmt-item">
+  el.innerHTML = '';
+  state.boards.forEach((b, idx) => {
+    const item = document.createElement('div');
+    item.className = 'board-mgmt-item';
+    item.dataset.idx = idx;
+    item.innerHTML = `
+      <span class="board-drag-handle" title="Reihenfolge ändern">⠿</span>
       <span class="board-mgmt-name">${esc(b.name)}</span>
-      <button class="board-rename-btn" onclick="renameBoard(${b.id},'${esc(b.name).replace(/'/g,"\\'")}')">umbenennen</button>
-      <button class="board-del-btn" onclick="deleteBoard(${b.id})" ${state.boards.length<=1?'disabled title="Letztes Board"':''}>✕</button>
-    </div>`).join('');
+      <button class="board-rename-btn" onclick="renameBoard(${b.id},'${esc(b.name).replace(/'/g,"\'")}')">umbenennen</button>
+      <button class="board-del-btn" onclick="deleteBoard(${b.id})" ${state.boards.length<=1?'disabled title="Letztes Board"':''}>✕</button>`;
+
+    // Drag to reorder (mouse + touch)
+    const handle = item.querySelector('.board-drag-handle');
+
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      boardDrag.dragIdx = idx;
+      item.classList.add('dragging');
+      const onMove = e2 => boardDragMove(e2.clientY);
+      const onUp = () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.board-mgmt-item').forEach(i=>i.classList.remove('drag-over'));
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    handle.addEventListener('touchstart', e => {
+      e.preventDefault();
+      boardDrag.dragIdx = idx;
+      item.classList.add('dragging');
+      const onMove = e2 => boardDragMove(e2.touches[0].clientY);
+      const onEnd = () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.board-mgmt-item').forEach(i=>i.classList.remove('drag-over'));
+        handle.removeEventListener('touchmove', onMove);
+        handle.removeEventListener('touchend', onEnd);
+      };
+      handle.addEventListener('touchmove', onMove, {passive:false});
+      handle.addEventListener('touchend', onEnd);
+    }, {passive:false});
+
+    el.appendChild(item);
+  });
+}
+
+function boardDragMove(clientY) {
+  const items = [...document.querySelectorAll('.board-mgmt-item')];
+  items.forEach(i => i.classList.remove('drag-over'));
+  let targetIdx = null;
+  for (let i = 0; i < items.length; i++) {
+    const r = items[i].getBoundingClientRect();
+    if (clientY < r.top + r.height / 2) { targetIdx = i; break; }
+  }
+  if (targetIdx === null) targetIdx = items.length - 1;
+  if (targetIdx !== boardDrag.dragIdx) {
+    if (items[targetIdx]) items[targetIdx].classList.add('drag-over');
+    // Reorder in state immediately for live feedback
+    const newBoards = [...state.boards];
+    const [moved] = newBoards.splice(boardDrag.dragIdx, 1);
+    const insertAt = targetIdx > boardDrag.dragIdx ? targetIdx : targetIdx;
+    newBoards.splice(insertAt, 0, moved);
+    state.boards = newBoards;
+    boardDrag.dragIdx = insertAt;
+    renderBoardMgmtList();
+    renderBoardBar();
+    saveBoardOrder();
+  }
+}
+
+async function saveBoardOrder() {
+  const ids = state.boards.map(b => b.id);
+  await api('POST', '/api/boards/reorder', {board_ids: ids}).catch(()=>{});
 }
 async function createBoard() {
   const name = document.getElementById('new-board-name').value.trim();
