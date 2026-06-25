@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3, os, base64
@@ -28,8 +28,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS boards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            sort_order INTEGER NOT NULL DEFAULT 0
+            created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +44,6 @@ def init_db():
             color TEXT NOT NULL DEFAULT 'yellow',
             author TEXT,
             archived INTEGER NOT NULL DEFAULT 0,
-            sort_order INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (board_id) REFERENCES boards(id)
@@ -73,14 +71,22 @@ def init_db():
             value TEXT NOT NULL
         );
     """)
-    # Migrations
-    cols = [r[1] for r in con.execute("PRAGMA table_info(notes)").fetchall()]
-    if 'sort_order' not in cols:
+
+    # Migration: add sort_order to boards
+    bcols = [r[1] for r in con.execute("PRAGMA table_info(boards)").fetchall()]
+    if 'sort_order' not in bcols:
+        con.execute("ALTER TABLE boards ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+        for i, row in enumerate(con.execute("SELECT id FROM boards ORDER BY id").fetchall()):
+            con.execute("UPDATE boards SET sort_order=? WHERE id=?", (i, row[0]))
+
+    # Migration: add sort_order to notes
+    ncols = [r[1] for r in con.execute("PRAGMA table_info(notes)").fetchall()]
+    if 'sort_order' not in ncols:
         con.execute("ALTER TABLE notes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
 
     # Default board
     if con.execute("SELECT COUNT(*) FROM boards").fetchone()[0] == 0:
-        con.execute("INSERT INTO boards (name, created_at) VALUES (?, ?)", ("Hauptboard", now()))
+        con.execute("INSERT INTO boards (name, sort_order, created_at) VALUES (?, 0, ?)", ("Hauptboard", now()))
 
     con.commit()
     con.close()
@@ -111,20 +117,11 @@ class NoteUpdate(BaseModel):
     archived: Optional[int] = None
     editor: Optional[str] = None
 
-class BoardReorderIn(BaseModel):
-    board_ids: List[int]
-
-@app.post("/api/boards/reorder")
-def reorder_boards(r: BoardReorderIn):
-    con = get_db()
-    for i, bid in enumerate(r.board_ids):
-        con.execute("UPDATE boards SET sort_order=? WHERE id=?", (i, bid))
-    con.commit()
-    con.close()
-    return {"ok": True}
-
 class ReorderIn(BaseModel):
     note_ids: List[int]
+
+class BoardReorderIn(BaseModel):
+    board_ids: List[int]
 
 # ── Helpers ──────────────────────────────────────────────
 def enrich_notes(rows, con):
@@ -191,7 +188,7 @@ def create_board(b: BoardIn):
     con.commit()
     board_id = cur.lastrowid
     con.close()
-    return {"id": board_id, "name": b.name}
+    return {"id": board_id, "name": b.name, "sort_order": max_order}
 
 @app.delete("/api/boards/{board_id}")
 def delete_board(board_id: int):
@@ -219,16 +216,21 @@ def rename_board(board_id: int, b: BoardIn):
     con.close()
     return {"ok": True}
 
-# ── Overview board ───────────────────────────────────────
+@app.post("/api/boards/reorder")
+def reorder_boards(r: BoardReorderIn):
+    con = get_db()
+    for i, bid in enumerate(r.board_ids):
+        con.execute("UPDATE boards SET sort_order=? WHERE id=?", (i, bid))
+    con.commit()
+    con.close()
+    return {"ok": True}
+
+# ── Overview ─────────────────────────────────────────────
 @app.get("/api/notes/overview")
 def overview_notes():
-    """All non-archived notes across all boards."""
     con = get_db()
-    rows = con.execute(
-        "SELECT * FROM notes WHERE archived=0 ORDER BY updated_at DESC"
-    ).fetchall()
+    rows = con.execute("SELECT * FROM notes WHERE archived=0 ORDER BY updated_at DESC").fetchall()
     result = enrich_notes(rows, con)
-    # Attach board name
     boards_map = {r["id"]: r["name"] for r in con.execute("SELECT id, name FROM boards").fetchall()}
     for n in result:
         n["board_name"] = boards_map.get(n["board_id"], "?")
@@ -265,24 +267,18 @@ def delete_tag(board_id: int, tag_id: int):
 @app.get("/api/boards/{board_id}/notes")
 def list_notes(board_id: int, archived: int = 0):
     con = get_db()
-    # Primary board notes
     rows = con.execute(
         "SELECT * FROM notes WHERE board_id=? AND archived=? ORDER BY sort_order ASC, created_at DESC",
         (board_id, archived)
     ).fetchall()
-    # Also notes assigned to this board via note_boards
-    extra_ids = {r[0] for r in con.execute(
-        "SELECT note_id FROM note_boards WHERE board_id=?", (board_id,)
-    ).fetchall()}
+    extra_ids = {r[0] for r in con.execute("SELECT note_id FROM note_boards WHERE board_id=?", (board_id,)).fetchall()}
     primary_ids = {dict(r)["id"] for r in rows}
-    extra_note_ids = extra_ids - primary_ids
     extra_rows = []
-    for nid in extra_note_ids:
+    for nid in extra_ids - primary_ids:
         r = con.execute("SELECT * FROM notes WHERE id=? AND archived=?", (nid, archived)).fetchone()
         if r:
             extra_rows.append(r)
-    all_rows = list(rows) + extra_rows
-    result = enrich_notes(all_rows, con)
+    result = enrich_notes(list(rows) + extra_rows, con)
     con.close()
     return result
 
@@ -291,7 +287,7 @@ def create_note(board_id: int, n: NoteIn):
     con = get_db()
     ts = now()
     max_order = con.execute(
-        "SELECT COALESCE(MIN(sort_order),1)-1 FROM notes WHERE board_id=? AND archived=0", (board_id,)
+        "SELECT COALESCE(MIN(sort_order), 1) - 1 FROM notes WHERE board_id=? AND archived=0", (board_id,)
     ).fetchone()[0]
     cur = con.execute(
         "INSERT INTO notes (board_id, text, color, author, archived, sort_order, created_at, updated_at) VALUES (?,?,?,?,0,?,?,?)",
@@ -306,8 +302,7 @@ def create_note(board_id: int, n: NoteIn):
     con.execute("INSERT INTO note_history (note_id, text, author, changed_at) VALUES (?,?,?,?)",
                 (note_id, n.text, n.author, ts))
     con.commit()
-    rows = con.execute("SELECT * FROM notes WHERE id=?", (note_id,)).fetchall()
-    result = enrich_notes(rows, con)
+    result = enrich_notes(con.execute("SELECT * FROM notes WHERE id=?", (note_id,)).fetchall(), con)
     con.close()
     return result[0]
 
@@ -331,17 +326,15 @@ def update_note(note_id: int, u: NoteUpdate):
         for tid in u.tag_ids:
             con.execute("INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?,?)", (note_id, tid))
     if u.extra_board_ids is not None:
-        primary_board = note["board_id"]
         con.execute("DELETE FROM note_boards WHERE note_id=?", (note_id,))
         for bid in u.extra_board_ids:
-            if bid != primary_board:
+            if bid != note["board_id"]:
                 con.execute("INSERT OR IGNORE INTO note_boards (note_id, board_id) VALUES (?,?)", (note_id, bid))
     if u.text is not None:
         con.execute("INSERT INTO note_history (note_id, text, author, changed_at) VALUES (?,?,?,?)",
                     (note_id, u.text, u.editor or u.author, now()))
     con.commit()
-    rows = con.execute("SELECT * FROM notes WHERE id=?", (note_id,)).fetchall()
-    result = enrich_notes(rows, con)
+    result = enrich_notes(con.execute("SELECT * FROM notes WHERE id=?", (note_id,)).fetchall(), con)
     con.close()
     return result[0]
 
@@ -359,9 +352,7 @@ def delete_note(note_id: int):
 @app.get("/api/notes/{note_id}/history")
 def note_history(note_id: int):
     con = get_db()
-    rows = con.execute(
-        "SELECT * FROM note_history WHERE note_id=? ORDER BY changed_at DESC", (note_id,)
-    ).fetchall()
+    rows = con.execute("SELECT * FROM note_history WHERE note_id=? ORDER BY changed_at DESC", (note_id,)).fetchall()
     con.close()
     return [dict(r) for r in rows]
 
