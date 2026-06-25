@@ -302,16 +302,20 @@ let state = {
   editNoteId:null, selColor:'yellow', selTags:[], selExtraBoards:[]
 };
 
-async function api(method, path, body) {
+async function api(method, path, body, silent=false) {
   const r = await fetch(API+path, {method, headers:{'Content-Type':'application/json'}, body:body?JSON.stringify(body):undefined});
-  if (!r.ok) { const e = await r.json().catch(()=>({detail:'Fehler'})); alert(e.detail||'Fehler'); throw e; }
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({detail:'Fehler'}));
+    if (!silent) alert(e.detail||'Fehler');
+    throw e;
+  }
   return r.json();
 }
 
 // ── Logo ──────────────────────────────────────────────
 async function loadLogo() {
   try {
-    const r = await api('GET', '/api/settings/logo');
+    const r = await api('GET', '/api/settings/logo', null, true);
     setLogoImg(r.logo);
   } catch(e) {}
 }
