@@ -3,7 +3,7 @@
 Eine selbst-gehostete digitale Pinnwand mit bunten PostIt-Notizen — einfach zu bedienen, keine Anmeldung nötig, läuft lokal im Netzwerk.
 
 <img src="/pinnwand_screenshot.png" alt="Alt-Text" width="300"/>
-<img src="/pinnwand _full_screenshot.png" alt="Alt-Text" width="300"/>
+<img src="/pinnwand_full_screenshot.png" alt="Alt-Text" width="300"/>
 
 
 ## ✨ Features
