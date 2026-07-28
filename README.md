@@ -32,7 +32,7 @@ A self-hosted digital pinboard with colorful sticky notes — easy to use, no lo
 ### 1. Clone the repository
 
 
-git clone [https://github.com/YOUR-USERNAME/pinnwand.git](https://github.com/YOUR-USERNAME/pinnwand.git)
+git clone [https://github.com/Abratzo/pinnwand.git](https://github.com/Abratzo/pinnwand.git)
 cd pinnwand
 
 
