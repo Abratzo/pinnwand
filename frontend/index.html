@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>📌 Pinnwand</title>
+<title>📌 Noticeboard</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#c8a878;min-height:100vh;user-select:none}
@@ -158,16 +158,17 @@ header h1{font-size:20px;font-weight:700}
 <body>
 
 <header>
-  <div id="logo-wrap" onclick="document.getElementById('logo-input').click()" title="Logo hochladen">
+  <div id="logo-wrap" onclick="document.getElementById('logo-input').click()" title="Upload logo">
     <span id="logo-ph">🏠</span>
     <img id="logo-img" alt="Logo">
   </div>
   <input type="file" id="logo-input" accept="image/*">
-  <h1>📌 Pinnwand</h1>
+  <h1>📌 Noticeboard</h1>
   <span id="note-count"></span>
   <div class="hdr-gap"></div>
-  <button class="hdr-btn" onclick="openBoardMgmt()">⚙ Boards</button>
-  <button class="hdr-btn btn-new" onclick="openNewNote()">+ Neue Notiz</button>
+  <button class="hdr-btn" id="lang-btn" onclick="toggleLang()">🇩🇪 DE</button>
+  <button class="hdr-btn" onclick="openBoardMgmt()" id="btn-boards">⚙ Boards</button>
+  <button class="hdr-btn btn-new" onclick="openNewNote()">+ New Note</button>
 </header>
 
 <div id="board-bar"></div>
@@ -175,21 +176,21 @@ header h1{font-size:20px;font-weight:700}
 <div id="filter-bar">
   <span style="font-size:12px;color:#d4b896">Tags:</span>
   <div id="filter-tags" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-  <button id="btn-tag-mgmt" onclick="openTagMgmt()">+ Tags verwalten</button>
-  <button id="btn-archive" onclick="toggleArchive()">📦 Archiv</button>
+  <button id="btn-tag-mgmt" onclick="openTagMgmt()">+ Manage tags</button>
+  <button id="btn-archive" onclick="toggleArchive()">📦 Archive</button>
 </div>
 
 <div id="board">
   <div class="empty-hint" id="empty-hint">
     <div class="big">📝</div>
-    Noch keine Notizen.<br>Klicke auf <strong>+ Neue Notiz</strong>!
+    Noch keine Notizen.<br>Klicke auf <strong>+ New Note</strong>!
   </div>
 </div>
 
 <!-- Note Modal -->
 <div class="overlay" id="m-note">
   <div class="modal">
-    <h2 id="m-note-title">✏️ Neue Notiz</h2>
+    <h2 id="m-note-title">✏️ New Note</h2>
     <label>Text</label>
     <div class="fmt-bar">
       <button class="fb" id="fb-b" onclick="fmt('bold')" title="Fett (Strg+B)"><b>B</b></button>
@@ -200,10 +201,10 @@ header h1{font-size:20px;font-weight:700}
       <button class="fb" id="fb-ol" onclick="fmt('insertOrderedList')" title="Nummerierung">1. —</button>
       <button class="fb" onclick="insertCheck()" title="Checkliste">☑</button>
     </div>
-    <div class="editor" id="n-text" contenteditable="true" data-ph="Was möchtest du notieren?"></div>
-    <label>Dein Name (optional)</label>
-    <input type="text" id="n-author" placeholder="z.B. Maria">
-    <label>Farbe</label>
+    <div class="editor" id="n-text" contenteditable="true" data-ph=""></div>
+    <label>Your name (optional)</label>
+    <input type="text" id="n-author" placeholder="e.g. Maria">
+    <label>Color</label>
     <div class="color-row">
       <div class="cc cc-y on" data-c="yellow" onclick="pickColor(this)"></div>
       <div class="cc cc-p" data-c="pink" onclick="pickColor(this)"></div>
@@ -214,11 +215,11 @@ header h1{font-size:20px;font-weight:700}
     </div>
     <label>Tags</label>
     <div class="tag-sel" id="n-tags"></div>
-    <label>Auch anzeigen auf</label>
+    <label>Also show on</label>
     <div class="bsi-grid" id="n-boards"></div>
     <div class="modal-btns">
-      <button class="btn-c" onclick="closeM('m-note')">Abbrechen</button>
-      <button class="btn-ok" onclick="saveNote()">Speichern 💾</button>
+      <button class="btn-c" onclick="closeM('m-note')">Cancel</button>
+      <button class="btn-ok" onclick="saveNote()">Save 💾</button>
     </div>
   </div>
 </div>
@@ -226,30 +227,30 @@ header h1{font-size:20px;font-weight:700}
 <!-- History Modal -->
 <div class="overlay" id="m-hist">
   <div class="modal">
-    <h2>📜 Änderungsverlauf</h2>
+    <h2>📜 Change history</h2>
     <div id="hist-list"></div>
-    <div class="modal-btns"><button class="btn-c" onclick="closeM('m-hist')">Schließen</button></div>
+    <div class="modal-btns"><button class="btn-c" onclick="closeM('m-hist')">Close</button></div>
   </div>
 </div>
 
 <!-- Tag Mgmt Modal -->
 <div class="overlay" id="m-tags">
   <div class="modal">
-    <h2>🏷 Tags verwalten</h2>
+    <h2>🏷 Manage tags</h2>
     <div id="tag-mgmt-list"></div>
     <hr style="margin:14px 0;border:none;border-top:1px solid #eee">
-    <label>Neuer Tag Name</label>
-    <input type="text" id="new-tag-name" placeholder="Tag-Name" style="margin-bottom:8px">
-    <label>Farbe</label>
+    <label>New tag name</label>
+    <input type="text" id="new-tag-name" placeholder="Tag name" style="margin-bottom:8px">
+    <label>Color</label>
     <select id="new-tag-color" style="width:100%;padding:7px;border:1.5px solid #ddd;border-radius:7px;font-size:14px;outline:none">
-      <option value="gray">Grau</option><option value="red">Rot</option>
-      <option value="orange">Orange</option><option value="yellow">Gelb</option>
-      <option value="green">Grün</option><option value="blue">Blau</option>
-      <option value="purple">Lila</option><option value="pink">Pink</option>
+      <option value="gray">Gray</option><option value="red">Red</option>
+      <option value="orange">Orange</option><option value="yellow">Yellow</option>
+      <option value="green">Green</option><option value="blue">Blue</option>
+      <option value="purple">Purple</option><option value="pink">Pink</option>
     </select>
     <div class="modal-btns">
-      <button class="btn-c" onclick="closeM('m-tags')">Schließen</button>
-      <button class="btn-ok" onclick="createTag()">Tag erstellen</button>
+      <button class="btn-c" onclick="closeM('m-tags')">Close</button>
+      <button class="btn-ok" onclick="createTag()">Create tag</button>
     </div>
   </div>
 </div>
@@ -257,14 +258,14 @@ header h1{font-size:20px;font-weight:700}
 <!-- Board Mgmt Modal -->
 <div class="overlay" id="m-boards">
   <div class="modal">
-    <h2>⚙ Boards verwalten</h2>
+    <h2>⚙ Manage boards</h2>
     <div id="board-mgmt-list"></div>
     <hr style="margin:14px 0;border:none;border-top:1px solid #eee">
-    <label>Neues Board</label>
-    <input type="text" id="new-board-name" placeholder="Board-Name">
+    <label>New board</label>
+    <input type="text" id="new-board-name" placeholder="Board name">
     <div class="modal-btns">
-      <button class="btn-c" onclick="closeM('m-boards')">Schließen</button>
-      <button class="btn-ok" onclick="createBoard()">Board erstellen</button>
+      <button class="btn-c" onclick="closeM('m-boards')">Close</button>
+      <button class="btn-ok" onclick="createBoard()">Create board</button>
     </div>
   </div>
 </div>
@@ -272,15 +273,179 @@ header h1{font-size:20px;font-weight:700}
 <!-- Confirm Modal -->
 <div class="overlay" id="m-confirm">
   <div class="confirm-box">
-    <p id="confirm-txt">Sicher?</p>
+    <p id="confirm-txt">Are you sure?</p>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn-c" onclick="closeM('m-confirm')">Nein</button>
-      <button class="btn-del" id="confirm-yes">Ja, löschen</button>
+      <button class="btn-c" onclick="closeM('m-confirm')">No</button>
+      <button class="btn-del" id="confirm-yes">Yes, delete</button>
     </div>
   </div>
 </div>
 
 <script>
+
+// ── i18n ─────────────────────────────────────────────
+const LANG = {
+  de: {
+    title: '📌 Pinnwand',
+    newNote: '+ Neue Notiz',
+    boards: '⚙ Boards',
+    overview: '🗂 Übersicht',
+    manageTags: '+ Tags verwalten',
+    archive: '📦 Archiv',
+    emptyHint: 'Noch keine Notizen.<br>Klicke auf <strong>+ Neue Notiz</strong>!',
+    modalNewNote: '✏️ Neue Notiz',
+    modalEditNote: '✏️ Notiz bearbeiten',
+    labelText: 'Text',
+    placeholder: 'Was möchtest du notieren?',
+    labelAuthor: 'Dein Name (optional)',
+    authorPlaceholder: 'z.B. Maria',
+    labelColor: 'Farbe',
+    labelTags: 'Tags',
+    labelAlsoOn: 'Auch anzeigen auf',
+    cancel: 'Abbrechen',
+    save: 'Speichern 💾',
+    histTitle: '📜 Änderungsverlauf',
+    close: 'Schließen',
+    noHistory: 'Kein Verlauf.',
+    current: 'Aktuell',
+    tagMgmtTitle: '🏷 Tags verwalten',
+    newTagLabel: 'Neuer Tag Name',
+    tagPlaceholder: 'Tag-Name',
+    createTag: 'Tag erstellen',
+    noTags: 'Noch keine Tags.',
+    boardMgmtTitle: '⚙ Boards verwalten',
+    newBoardLabel: 'Neues Board',
+    boardPlaceholder: 'Board-Name',
+    createBoard: 'Board erstellen',
+    confirmNo: 'Nein',
+    confirmYes: 'Ja, löschen',
+    confirmNote: 'Notiz wirklich löschen?',
+    confirmBoard: 'Board und alle Notizen löschen?',
+    rename: 'umbenennen',
+    renamePrompt: 'Neuer Name:',
+    primaryBoard: 'Hauptboard',
+    noteEmpty: 'Leer',
+    by: 'von',
+    notes0: '',
+    notes1: '1 Notiz',
+    notesN: ' Notizen',
+    colorGray: 'Grau', colorRed: 'Rot', colorOrange: 'Orange',
+    colorYellow: 'Gelb', colorGreen: 'Grün', colorBlue: 'Blau',
+    colorPurple: 'Lila', colorPink: 'Pink',
+    logoTitle: 'Logo hochladen',
+  },
+  en: {
+    title: '📌 Noticeboard',
+    newNote: '+ New Note',
+    boards: '⚙ Boards',
+    overview: '🗂 Overview',
+    manageTags: '+ Manage tags',
+    archive: '📦 Archive',
+    emptyHint: 'No notes yet.<br>Click <strong>+ New Note</strong> to get started!',
+    modalNewNote: '✏️ New Note',
+    modalEditNote: '✏️ Edit Note',
+    labelText: 'Text',
+    placeholder: "What's on your mind?",
+    labelAuthor: 'Your name (optional)',
+    authorPlaceholder: 'e.g. Maria',
+    labelColor: 'Color',
+    labelTags: 'Tags',
+    labelAlsoOn: 'Also show on',
+    cancel: 'Cancel',
+    save: 'Save 💾',
+    histTitle: '📜 Change history',
+    close: 'Close',
+    noHistory: 'No history yet.',
+    current: 'Current',
+    tagMgmtTitle: '🏷 Manage tags',
+    newTagLabel: 'New tag name',
+    tagPlaceholder: 'Tag name',
+    createTag: 'Create tag',
+    noTags: 'No tags yet.',
+    boardMgmtTitle: '⚙ Manage boards',
+    newBoardLabel: 'New board',
+    boardPlaceholder: 'Board name',
+    createBoard: 'Create board',
+    confirmNo: 'No',
+    confirmYes: 'Yes, delete',
+    confirmNote: 'Really delete this note?',
+    confirmBoard: 'Delete board and all its notes?',
+    rename: 'rename',
+    renamePrompt: 'New name:',
+    primaryBoard: 'Primary board',
+    noteEmpty: 'Empty',
+    by: 'by',
+    notes0: '',
+    notes1: '1 note',
+    notesN: ' notes',
+    colorGray: 'Gray', colorRed: 'Red', colorOrange: 'Orange',
+    colorYellow: 'Yellow', colorGreen: 'Green', colorBlue: 'Blue',
+    colorPurple: 'Purple', colorPink: 'Pink',
+    logoTitle: 'Upload logo',
+  }
+};
+
+let currentLang = localStorage.getItem('lang') || 'en';
+const t = () => LANG[currentLang];
+
+function applyLang() {
+  const l = t();
+  document.documentElement.lang = currentLang;
+  document.title = l.title;
+  document.querySelector('header h1').textContent = l.title;
+  document.getElementById('lang-btn').textContent = currentLang === 'de' ? '🇬🇧 EN' : '🇩🇪 DE';
+  document.getElementById('btn-boards').textContent = l.boards;
+  document.querySelector('.btn-new').textContent = l.newNote;
+  document.getElementById('btn-tag-mgmt').textContent = l.manageTags;
+  document.getElementById('btn-archive').textContent = l.archive;
+  document.getElementById('logo-wrap').title = l.logoTitle;
+  document.getElementById('empty-hint').querySelector('div:last-child').innerHTML = l.emptyHint;
+  // Note modal labels
+  document.querySelector('#m-note label:nth-of-type(1)').textContent = l.labelText;
+  document.querySelector('#m-note label:nth-of-type(2)').textContent = l.labelAuthor;
+  document.querySelector('#m-note label:nth-of-type(3)').textContent = l.labelColor;
+  document.querySelector('#m-note label:nth-of-type(4)').textContent = l.labelTags;
+  document.querySelector('#m-note label:nth-of-type(5)').textContent = l.labelAlsoOn;
+  document.getElementById('n-text').dataset.ph = l.placeholder;
+  document.getElementById('n-author').placeholder = l.authorPlaceholder;
+  document.querySelector('#m-note .btn-c').textContent = l.cancel;
+  document.querySelector('#m-note .btn-ok').textContent = l.save;
+  // History modal
+  document.querySelector('#m-hist h2').textContent = l.histTitle;
+  document.querySelector('#m-hist .btn-c').textContent = l.close;
+  // Tag modal
+  document.querySelector('#m-tags h2').textContent = l.tagMgmtTitle;
+  document.querySelector('label[for="new-tag-name"], #m-tags label:nth-of-type(1)').textContent = l.newTagLabel;
+  document.getElementById('new-tag-name').placeholder = l.tagPlaceholder;
+  document.querySelector('#m-tags .btn-c').textContent = l.close;
+  document.querySelector('#m-tags .btn-ok').textContent = l.createTag;
+  // Board modal
+  document.querySelector('#m-boards h2').textContent = l.boardMgmtTitle;
+  document.querySelector('#m-boards label').textContent = l.newBoardLabel;
+  document.getElementById('new-board-name').placeholder = l.boardPlaceholder;
+  document.querySelector('#m-boards .btn-c').textContent = l.close;
+  document.querySelector('#m-boards .btn-ok').textContent = l.createBoard;
+  // Confirm modal
+  document.querySelector('#m-confirm .btn-c').textContent = l.confirmNo;
+  // Color select options
+  const colorMap = ['Gray','Red','Orange','Yellow','Green','Blue','Purple','Pink'];
+  const colorKeys = ['colorGray','colorRed','colorOrange','colorYellow','colorGreen','colorBlue','colorPurple','colorPink'];
+  const sel = document.getElementById('new-tag-color');
+  if (sel) {
+    [...sel.options].forEach((opt, i) => { if (colorKeys[i]) opt.text = l[colorKeys[i]]; });
+  }
+  // Re-render dynamic content
+  renderBar();
+  renderFilterBar();
+  renderNotes();
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'de' ? 'en' : 'de';
+  localStorage.setItem('lang', currentLang);
+  applyLang();
+}
+
 // ── State ─────────────────────────────────────────────
 const OV = 'overview';
 const COLS = ['yellow','pink','blue','green','orange','purple'];
@@ -335,6 +500,7 @@ async function init() {
   localStorage.setItem('board', S.board);
 
   await loadBoard();
+  applyLang();
 }
 
 async function loadBoard() {
@@ -373,7 +539,7 @@ document.getElementById('logo-input').addEventListener('change', async function(
 function renderBar() {
   const bar = document.getElementById('board-bar');
   bar.innerHTML =
-    '<button class="board-tab ov' + (S.board===OV?' active':'') + '" data-bid="' + OV + '">🗂 Übersicht</button>' +
+    '<button class="board-tab ov' + (S.board===OV?' active':'') + '" data-bid="' + OV + '">'+t().overview+'</button>' +
     S.boards.map(b =>
       '<button class="board-tab' + (b.id===S.board?' active':'') + '" data-bid="' + b.id + '">' + esc(b.name) + '</button>'
     ).join('') +
@@ -438,7 +604,7 @@ function renderNotes() {
     : S.notes;
 
   const cnt = document.getElementById('note-count');
-  cnt.textContent = notes.length === 0 ? '' : notes.length === 1 ? '1 Notiz' : notes.length + ' Notizen';
+  cnt.textContent = notes.length === 0 ? '' : notes.length === 1 ? t().notes1 : notes.length + t().notesN;
   document.getElementById('empty-hint').style.display = notes.length ? 'none' : 'block';
 
   notes.forEach(note => {
@@ -463,8 +629,8 @@ function renderNotes() {
         '<button class="nib" data-action="delete">✕</button>' +
       '</div>' +
       (isOv && note.board_name ? '<div class="note-board-badge">📋 ' + esc(note.board_name) + '</div>' : '') +
-      (note.author ? '<div class="note-author">von ' + esc(note.author) + '</div>' : '') +
-      '<div class="note-body">' + (note.text || '<span style="color:rgba(0,0,0,.3)">Leer</span>') + '</div>' +
+      (note.author ? '<div class="note-author">'+t().by+' ' + esc(note.author) + '</div>' : '') +
+      '<div class="note-body">' + (note.text || '<span style="color:rgba(0,0,0,.3)">'+t().noteEmpty+'</span>') + '</div>' +
       (tagsHtml ? '<div class="note-tags">' + tagsHtml + '</div>' : '') +
       '<div class="note-footer">' +
         '<span class="note-date">' + fmtDate(note.updated_at) + '</span>' +
@@ -510,7 +676,9 @@ async function changeColor(id, color) {
   renderNotes();
 }
 function confirmDelete(id) {
-  document.getElementById('confirm-txt').textContent = 'Notiz wirklich löschen?';
+  document.getElementById('confirm-txt').textContent = t().confirmNote;
+  document.getElementById('confirm-yes').textContent = t().confirmYes;
+  document.getElementById('confirm-yes').textContent = t().confirmYes;
   document.getElementById('confirm-yes').onclick = async () => {
     await del('/api/notes/' + id);
     S.notes = S.notes.filter(n => n.id !== id);
@@ -523,7 +691,7 @@ function confirmDelete(id) {
 // ── Note Modal ────────────────────────────────────────
 function openNewNote() {
   S.editId = null; S.color = 'yellow'; S.selTags = []; S.selBoards = [];
-  document.getElementById('m-note-title').textContent = '✏️ Neue Notiz';
+  document.getElementById('m-note-title').textContent = t().modalNewNote;
   document.getElementById('n-text').innerHTML = '';
   document.getElementById('n-author').value = localStorage.getItem('author') || '';
   setColor('yellow');
@@ -539,7 +707,7 @@ async function openEditNote(id) {
   S.editId = id; S.color = note.color;
   S.selTags = (note.tags||[]).map(t => t.id);
   S.selBoards = note.extra_board_ids || [];
-  document.getElementById('m-note-title').textContent = '✏️ Notiz bearbeiten';
+  document.getElementById('m-note-title').textContent = t().modalEditNote;
   document.getElementById('n-text').innerHTML = note.text || '';
   document.getElementById('n-author').value = note.author || '';
   setColor(note.color);
@@ -580,7 +748,7 @@ function renderBoardSel(primaryId) {
     const s = document.createElement('span');
     s.className = 'bsi' + (isPrimary ? ' primary' : S.selBoards.includes(b.id) ? ' on' : '');
     s.textContent = (isPrimary ? '✓ ' : '') + b.name;
-    if (isPrimary) { s.title = 'Hauptboard'; }
+    if (isPrimary) { s.title = t().primaryBoard; }
     else {
       s.addEventListener('click', () => {
         const i = S.selBoards.indexOf(b.id);
@@ -652,10 +820,10 @@ async function openHistory(id) {
   const el = document.getElementById('hist-list');
   el.innerHTML = hist.length ? hist.map((h,i) =>
     '<div class="hist-item"><div class="hist-meta">' +
-    (i===0?'<strong>Aktuell</strong> · ':'') +
+    (i===0?'<strong>'+t().current+'</strong> · ':'') +
     (h.author ? esc(h.author) + ' · ' : '') + fmtDate(h.changed_at) +
     '</div><div class="hist-text">' + esc(h.text) + '</div></div>'
-  ).join('') : '<p style="color:#aaa;font-size:13px">Kein Verlauf.</p>';
+  ).join('') : '<p style="color:#aaa;font-size:13px">'+t().noHistory+'</p>';
   openM('m-hist');
 }
 
@@ -667,7 +835,7 @@ function renderTagMgmt() {
     '<div class="tmgmt-item"><span class="ntag tc-' + t.color + '">' + esc(t.name) + '</span>' +
     '<span style="flex:1"></span>' +
     '<button class="tdel" data-tid="' + t.id + '">✕</button></div>'
-  ).join('') : '<p style="color:#aaa;font-size:13px">Noch keine Tags.</p>';
+  ).join('') : '<p style="color:#aaa;font-size:13px">'+t().noTags+'</p>';
   el.querySelectorAll('.tdel').forEach(btn => {
     btn.addEventListener('click', () => deleteTag(parseInt(btn.dataset.tid)));
   });
@@ -702,7 +870,7 @@ function renderBoardMgmt() {
     item.innerHTML =
       '<span class="bdrag">⠿</span>' +
       '<span class="bmgmt-name">' + esc(b.name) + '</span>' +
-      '<button class="brename" data-bid="' + b.id + '" data-name="' + esc(b.name) + '">umbenennen</button>' +
+      '<button class="brename" data-bid="' + b.id + '" data-name="' + esc(b.name) + '">rename</button>' +
       '<button class="bdel" data-bid="' + b.id + '" ' + (S.boards.length<=1?'disabled':'') + '>✕</button>';
 
     item.querySelector('.brename').addEventListener('click', function() {
@@ -771,14 +939,14 @@ async function createBoard() {
   renderBoardMgmt(); renderBar();
 }
 async function renameBoard(id, oldName) {
-  const name = prompt('Neuer Name:', oldName);
+  const name = prompt(t().renamePrompt, oldName);
   if (!name || name === oldName) return;
   await patch('/api/boards/' + id, {name});
   S.boards.find(b => b.id === id).name = name;
   renderBoardMgmt(); renderBar();
 }
 async function deleteBoard(id) {
-  if (!confirm('Board und alle Notizen löschen?')) return;
+  if (!confirm(t().confirmBoard)) return;
   await del('/api/boards/' + id);
   S.boards = S.boards.filter(b => b.id !== id);
   if (S.board === id) {
