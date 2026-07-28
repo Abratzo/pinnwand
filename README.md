@@ -1,90 +1,95 @@
-# 📌 Pinnwand
+# 📌 Pinnwand (Pinboard)
 
-Eine selbst-gehostete digitale Pinnwand mit bunten PostIt-Notizen — einfach zu bedienen, keine Anmeldung nötig, läuft lokal im Netzwerk.
+A self-hosted digital pinboard with colorful sticky notes — easy to use, no login required, runs locally on your network.
 
 <img src="/pinnwand_screenshot.png" alt="Alt-Text" width="300"/>
 <img src="/pinnwand_full_screenshot.png" alt="Alt-Text" width="300"/>
 
 
+
 ## ✨ Features
 
-- 📋 Mehrere Boards erstellen, benennen und per Drag & Drop sortieren
-- 🗂 Übersichts-Board zeigt alle Notizen aller Boards auf einen Blick
-- 🎨 Notizen in 6 Farben (gelb, pink, blau, grün, orange, lila)
-- 🏷 Frei erstellbare Tags pro Board, Notizen filtern nach Tags
-- ✏️ Textformatierung: **Fett**, *Kursiv*, Unterstrichen, Aufzählung, Nummerierung, Checkliste
-- 👤 Optionaler Erstellername pro Notiz
-- 📜 Änderungsverlauf jeder Notiz mit Name, Datum und Uhrzeit
-- 📦 Archivieren (ausblenden) und endgültig löschen
-- 🔀 Reihenfolge der Notizen per Drag & Drop ändern
-- 🖼 Eigenes Logo hochladbar
-- 💾 Alle Daten in SQLite-Datenbank (persistent über Neustarts)
-- 📱 Funktioniert auf Tablet, PC und Handy
+- 📋 **Multiple Boards:** Create, rename, and reorder boards via drag-and-drop
+- 🗂 **Overview Board:** View all notes across all boards at a single glance
+- 🎨 **6 Sticky Note Colors:** Yellow, pink, blue, green, orange, and purple
+- 🏷 **Custom Tags:** Create per-board tags and filter notes by tag
+- ✏️ **Rich Text Formatting:** **Bold**, *Italic*, Underline, Bullet Lists, Numbered Lists, Checklists
+- 👤 **Author Field:** Optional creator name for each note
+- 📜 **Change History:** Track note revisions with author name, date, and timestamp
+- 📦 **Archiving & Deletion:** Archive (hide) notes or permanently delete them
+- 🔀 **Custom Reordering:** Drag and drop notes to rearrange them
+- 🖼 **Custom Logo:** Upload your own logo
+- 💾 **Persistent Storage:** All data stored in a SQLite database (persists across restarts)
+- 📱 **Responsive UI:** Fully optimized for mobile, tablet, and desktop screens
 
 ---
 
-## 🚀 Installation
+## 🚀 Quickstart
 
-### Voraussetzungen
+### Prerequisites
 
-- [Proxmox](https://www.proxmox.com/) oder ein anderer Linux-Server
-- Docker (wird automatisch installiert, siehe unten)
+- Linux server with Docker and Docker Compose installed
+- *Alternative:* Proxmox VE (see section below)
 
----
+### 1. Clone the repository
 
-### Schritt 1 — Docker installieren (Proxmox)
 
-Im Proxmox-Webinterface auf den **Node** klicken → **Shell**, dann:
+git clone [https://github.com/YOUR-USERNAME/pinnwand.git](https://github.com/YOUR-USERNAME/pinnwand.git)
+cd pinnwand
+
+
+
+### 2. Start the container
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/docker.sh)"
-```
-
-Das Skript erstellt automatisch einen LXC-Container mit Docker. Danach in die **Console des neuen Containers** wechseln.
-
----
-
-### Schritt 2 — Dateien herunterladen
-
-```bash
-mkdir -p ~/pinnwand/backend ~/pinnwand/frontend
-
-TOKEN="DEIN_GITHUB_TOKEN"
-USER="DEIN_GITHUB_USERNAME"
-BASE="https://raw.githubusercontent.com/$USER/pinnwand/main"
-
-curl -sH "Authorization: token $TOKEN" -o ~/pinnwand/docker-compose.yml    "$BASE/docker-compose.yml"
-curl -sH "Authorization: token $TOKEN" -o ~/pinnwand/backend/Dockerfile     "$BASE/backend/Dockerfile"
-curl -sH "Authorization: token $TOKEN" -o ~/pinnwand/backend/main.py        "$BASE/backend/main.py"
-curl -sH "Authorization: token $TOKEN" -o ~/pinnwand/backend/requirements.txt "$BASE/backend/requirements.txt"
-curl -sH "Authorization: token $TOKEN" -o ~/pinnwand/frontend/index.html    "$BASE/frontend/index.html"
-```
-
-> **GitHub Token erstellen:** GitHub → Einstellungen → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → Haken bei `repo` setzen.
-
----
-
-### Schritt 3 — Starten
-
-```bash
-cd ~/pinnwand
 docker compose up -d --build
-```
-
-Der erste Start dauert 2–3 Minuten. Danach ist die Pinnwand erreichbar unter:
 
 ```
-http://CONTAINER-IP:8080
+
+*Note: Initial setup may take 2–3 minutes.*
+
+Once finished, open your browser and navigate to:
+
+```text
+http://YOUR-SERVER-IP:8080
+
 ```
 
-Die IP des Containers findest du in Proxmox unter dem Container → Summary.
+That's it! ✅
 
 ---
 
-### Optional: Portainer (grafische Verwaltung)
+## 🖥 Installation on Proxmox
 
-Portainer ermöglicht Updates und Verwaltung direkt im Browser ohne Shell.
+If you use Proxmox VE, you can quickly spin up a ready-to-use Docker LXC container using the Community Script:
 
+**In Proxmox Web UI: Select your Node → Shell**, then run:
+
+```bash
+bash -c "$(curl -fsSL [https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/docker.sh](https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/docker.sh))"
+
+```
+
+After creation, open the console of the newly created LXC container and follow the **Quickstart** steps above.
+
+---
+
+## 🔄 Updates
+
+To update your Pinnwand instance to the latest version:
+
+```bash
+cd pinnwand
+git pull
+docker compose up -d --build
+
+```
+
+### Via Portainer (Optional GUI Management)
+
+If you use Portainer:
+
+1. Install Portainer (if not already installed):
 ```bash
 docker run -d \
   -p 9000:9000 \
@@ -93,146 +98,117 @@ docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v portainer_data:/data \
   portainer/portainer-ce
+
 ```
 
-Portainer öffnen: `http://CONTAINER-IP:9000`
 
-Danach: **Stacks → Add Stack → Repository** und die GitHub-URL sowie den Token eintragen.
+2. Open `http://YOUR-SERVER-IP:9000` → Go to **Stacks** → **pinnwand** → Click **Pull and redeploy**.
 
 ---
 
-## 🔄 Updates einspielen
+## 💾 Automatic Backups
 
-### Via Shell
-
-```bash
-cd ~/pinnwand
-
-TOKEN="DEIN_GITHUB_TOKEN"
-USER="DEIN_GITHUB_USERNAME"
-BASE="https://raw.githubusercontent.com/$USER/pinnwand/main"
-
-curl -sH "Authorization: token $TOKEN" -o backend/main.py      "$BASE/backend/main.py"
-curl -sH "Authorization: token $TOKEN" -o frontend/index.html  "$BASE/frontend/index.html"
-
-docker compose up -d --build
-```
-
-Als Update-Skript speichern:
+Set up an automated daily script to back up your SQLite database:
 
 ```bash
-cat > ~/update-pinnwand.sh << 'EOF'
+cat > ~/backup-pinnwand.sh << 'SCRIPT'
 #!/bin/bash
-TOKEN="DEIN_GITHUB_TOKEN"
-USER="DEIN_GITHUB_USERNAME"
-BASE="https://raw.githubusercontent.com/$USER/pinnwand/main"
-cd ~/pinnwand
-curl -sH "Authorization: token $TOKEN" -o backend/main.py     "$BASE/backend/main.py"
-curl -sH "Authorization: token $TOKEN" -o frontend/index.html "$BASE/frontend/index.html"
-docker compose up -d --build
-echo "✅ Pinnwand aktualisiert!"
-EOF
-chmod +x ~/update-pinnwand.sh
-```
-
-Danach reicht immer: `~/update-pinnwand.sh`
-
-### Via Portainer
-
-Stacks → pinnwand → **Pull and redeploy**
-
----
-
-## 💾 Automatisches Backup
-
-```bash
-cat > ~/backup-pinnwand.sh << 'EOF'
-#!/bin/bash
-DATUM=$(date +%Y-%m-%d_%H-%M)
+DATE=$(date +%Y-%m-%d_%H-%M)
 mkdir -p ~/pinnwand-backups
 cp /var/lib/docker/volumes/pinnwand_pinnwand-data/_data/pinnwand.db \
-   ~/pinnwand-backups/pinnwand_$DATUM.db
+   ~/pinnwand-backups/pinnwand_$DATE.db
+# Keep only the last 7 backups
 ls -t ~/pinnwand-backups/*.db | tail -n +8 | xargs rm -f 2>/dev/null
-echo "✅ Backup erstellt: pinnwand_$DATUM.db"
-EOF
+echo "Backup created: pinnwand_$DATE.db"
+SCRIPT
 chmod +x ~/backup-pinnwand.sh
 
-# Täglich um 3:00 Uhr automatisch sichern
+# Run automatically every day at 03:00 AM
 (crontab -l 2>/dev/null; echo "0 3 * * * /root/backup-pinnwand.sh") | crontab -
-```
 
-Backup manuell ausführen: `~/backup-pinnwand.sh`
+```
 
 ---
 
-## 🗂 Dateistruktur
+## 🗂 Directory Structure
 
-```
+```text
 pinnwand/
-├── docker-compose.yml        # Docker-Konfiguration
+├── docker-compose.yml        # Docker Compose configuration
 ├── backend/
-│   ├── Dockerfile            # Container-Bauanleitung
-│   ├── main.py               # FastAPI Backend (Python)
-│   └── requirements.txt      # Python-Abhängigkeiten
+│   ├── Dockerfile            # Backend container instructions
+│   ├── main.py               # FastAPI backend (Python)
+│   └── requirements.txt      # Python dependencies
 └── frontend/
-    └── index.html            # Komplette Web-App (eine Datei)
+    └── index.html            # Complete single-file Web App
+
 ```
 
 ---
 
-## 🛠 Nützliche Befehle
+## 🛠 Useful Commands
 
 ```bash
-# Status prüfen
+# Check container status
 docker ps | grep pinnwand
 
-# Logs anschauen
-docker logs pinnwand-pinnwand-1
+# View live logs
+docker logs -f pinnwand-pinnwand-1
 
-# Neu starten
-cd ~/pinnwand && docker compose restart
+# Restart container
+docker compose restart
 
-# Stoppen
-cd ~/pinnwand && docker compose down
+# Stop container
+docker compose down
 
-# Datenbank direkt prüfen
+# Query SQLite database status directly
 docker exec pinnwand-pinnwand-1 python3 -c "
 import sqlite3
 con = sqlite3.connect('/data/pinnwand.db')
 print('Boards:', con.execute('SELECT id, name FROM boards').fetchall())
-print('Notizen:', con.execute('SELECT COUNT(*) FROM notes').fetchone()[0])
+print('Total Notes:', con.execute('SELECT COUNT(*) FROM notes').fetchone()[0])
 "
+
 ```
 
 ---
 
-## 🏗 Technischer Stack
+## 🏗 Tech Stack
 
-| Komponente | Technologie |
-|---|---|
-| Backend | Python 3.12 + FastAPI |
-| Datenbank | SQLite |
-| Frontend | Vanilla HTML/CSS/JavaScript |
-| Container | Docker + nginx |
-| Deployment | Docker Compose |
+| Component | Technology |
+| --- | --- |
+| **Backend** | Python 3.12 + FastAPI |
+| **Database** | SQLite |
+| **Frontend** | Vanilla HTML / CSS / JavaScript |
+| **Deployment** | Docker / Docker Compose |
 
 ---
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-| Variable | Standard | Beschreibung |
-|---|---|---|
-| `DB_PATH` | `/data/pinnwand.db` | Pfad zur Datenbank |
-| Port | `8080` | Erreichbar unter `http://IP:8080` |
+### Changing the Port
 
-Port ändern in `docker-compose.yml`:
+Modify `docker-compose.yml` to bind to your preferred port (e.g., port `80` instead of `8080`):
+
 ```yaml
 ports:
-  - "80:8000"   # Statt 8080 → Port 80 (Standard HTTP)
+  - "80:8000"
+
+```
+
+### Custom Database Path
+
+Set a custom path via environment variables in `docker-compose.yml`:
+
+```yaml
+environment:
+  - DB_PATH=/data/pinnwand.db
+
 ```
 
 ---
 
-## 📄 Lizenz
+## 📄 License
 
-MIT License — frei verwendbar, veränderbar und weiterggebbar.
+[MIT License](https://www.google.com/search?q=LICENSE) — free to use, modify, and distribute.
+EOF
