@@ -1,8 +1,6 @@
 # 📌 Pinnwand (Pinboard)
 
 A self-hosted digital pinboard with colorful sticky notes — easy to use, no login required, runs locally on your network.
-
-<img src="/pinnwand_screenshot.png" alt="Alt-Text" width="300"/>
 <img src="/pinnwand_full_screenshot.png" alt="Alt-Text" width="300"/>
 
 
