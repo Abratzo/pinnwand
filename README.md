@@ -2,7 +2,7 @@
 
 Eine selbst-gehostete digitale Pinnwand mit bunten PostIt-Notizen — einfach zu bedienen, keine Anmeldung nötig, läuft lokal im Netzwerk.
 
-![Pinnwand Screenshot](https://github.com/Abratzo/pinnwand/blob/main/pinnwand_screenshot.png)
+<img src="/pinnwand_screenshot.png" alt="Alt-Text" width="300"/>
 
 ## ✨ Features
 
